@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -16,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Task, TaskStatus, TaskType, Priority } from "@/types";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface TaskDialogProps {
   open: boolean;
@@ -42,6 +43,20 @@ export const TaskDialog = ({
     due_date: task?.due_date ? new Date(task.due_date).toISOString().split('T')[0] : '',
   });
 
+  // Reset form when task or dialog state changes
+  useEffect(() => {
+    if (open) {
+      setFormData({
+        title: task?.title || '',
+        description: task?.description || '',
+        type: task?.type || 'code' as TaskType,
+        status: task?.status || initialStatus,
+        priority: task?.priority || 'med' as Priority,
+        due_date: task?.due_date ? new Date(task.due_date).toISOString().split('T')[0] : '',
+      });
+    }
+  }, [task, initialStatus, open]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -65,6 +80,9 @@ export const TaskDialog = ({
           <DialogTitle>
             {task ? 'Edit Task' : 'Create New Task'}
           </DialogTitle>
+          <DialogDescription>
+            {task ? 'Update the task details below.' : 'Fill in the details to create a new task.'}
+          </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
