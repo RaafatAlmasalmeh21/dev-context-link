@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_task_suggestions: {
+        Row: {
+          applied: boolean | null
+          confidence_score: number | null
+          created_at: string
+          id: string
+          suggestion_data: Json
+          suggestion_type: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          applied?: boolean | null
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          suggestion_data: Json
+          suggestion_type: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          applied?: boolean | null
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          suggestion_data?: Json
+          suggestion_type?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       analyses: {
         Row: {
           asset_name: string
@@ -87,6 +120,144 @@ export type Database = {
           id?: string
           preferred_language?: string | null
           risk_profile?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      prompt_templates: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_public: boolean | null
+          name: string
+          template_text: string
+          updated_at: string
+          usage_count: number | null
+          user_id: string
+          variables: Json | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          name: string
+          template_text: string
+          updated_at?: string
+          usage_count?: number | null
+          user_id: string
+          variables?: Json | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          name?: string
+          template_text?: string
+          updated_at?: string
+          usage_count?: number | null
+          user_id?: string
+          variables?: Json | null
+        }
+        Relationships: []
+      }
+      prompts: {
+        Row: {
+          context: Json | null
+          created_at: string
+          id: string
+          model_used: string | null
+          prompt_text: string
+          response_text: string | null
+          task_id: string | null
+          template_id: string | null
+          title: string
+          tokens_used: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          model_used?: string | null
+          prompt_text: string
+          response_text?: string | null
+          task_id?: string | null
+          template_id?: string | null
+          title: string
+          tokens_used?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          model_used?: string | null
+          prompt_text?: string
+          response_text?: string | null
+          task_id?: string | null
+          template_id?: string | null
+          title?: string
+          tokens_used?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          actual_hours: number | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          estimated_hours: number | null
+          id: string
+          priority: string | null
+          project_id: string | null
+          status: string | null
+          tags: string[] | null
+          title: string
+          type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actual_hours?: number | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          estimated_hours?: number | null
+          id?: string
+          priority?: string | null
+          project_id?: string | null
+          status?: string | null
+          tags?: string[] | null
+          title: string
+          type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actual_hours?: number | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          estimated_hours?: number | null
+          id?: string
+          priority?: string | null
+          project_id?: string | null
+          status?: string | null
+          tags?: string[] | null
+          title?: string
+          type?: string | null
           updated_at?: string
           user_id?: string
         }

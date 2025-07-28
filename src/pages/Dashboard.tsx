@@ -5,6 +5,7 @@ import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { TaskDialog } from "@/components/tasks/TaskDialog";
 import { ReviewDialog } from "@/components/reviews/ReviewDialog";
 import { QuickPrompt } from "@/components/prompts/QuickPrompt";
+import { EnhancedPromptView } from "@/components/prompts/EnhancedPromptView";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
