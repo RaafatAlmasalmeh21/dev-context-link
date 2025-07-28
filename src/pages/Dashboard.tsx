@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Task, TaskStatus, Prompt } from "@/types";
 import { Plus, Calendar, Target, Zap, GitPullRequest, Code2, FolderOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
 
 export const Dashboard = () => {
   const { toast } = useToast();
@@ -261,23 +262,207 @@ export const Dashboard = () => {
     </div>
   );
 
-  const renderReviewsView = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Code Reviews</h2>
+  const renderReviewsView = () => {
+    // Mock data for demonstration
+    const mockPRs = [
+      {
+        id: 1,
+        title: "Add authentication middleware",
+        url: "https://github.com/user/repo/pull/123",
+        status: "open" as const,
+        reviewer: "john_doe",
+        created_at: "2024-01-15",
+        task_id: "task-1"
+      },
+      {
+        id: 2,
+        title: "Fix database connection pooling",
+        url: "https://github.com/user/repo/pull/124",
+        status: "changes-requested" as const,
+        reviewer: "jane_smith",
+        created_at: "2024-01-14",
+        task_id: null
+      },
+      {
+        id: 3,
+        title: "Update API documentation",
+        url: "https://github.com/user/repo/pull/125",
+        status: "merged" as const,
+        reviewer: "bob_wilson",
+        created_at: "2024-01-13",
+        task_id: "task-3"
+      }
+    ];
+
+    const getStatusColor = (status: string) => {
+      switch (status) {
+        case 'open': return 'text-blue-600 bg-blue-50 border-blue-200';
+        case 'changes-requested': return 'text-orange-600 bg-orange-50 border-orange-200';
+        case 'merged': return 'text-green-600 bg-green-50 border-green-200';
+        default: return 'text-gray-600 bg-gray-50 border-gray-200';
+      }
+    };
+
+    const getStatusIcon = (status: string) => {
+      switch (status) {
+        case 'open': return <GitPullRequest className="h-4 w-4" />;
+        case 'changes-requested': return <Target className="h-4 w-4" />;
+        case 'merged': return <Zap className="h-4 w-4" />;
+        default: return <GitPullRequest className="h-4 w-4" />;
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Code Reviews</h2>
+            <p className="text-muted-foreground">Track GitHub pull request reviews and link them to tasks</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline">
+              <GitPullRequest className="h-4 w-4 mr-2" />
+              Sync GitHub
+            </Button>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Review
+            </Button>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-blue-50 rounded-lg">
+                  <GitPullRequest className="h-4 w-4 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Open</p>
+                  <p className="text-xl font-bold">
+                    {mockPRs.filter(pr => pr.status === 'open').length}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-orange-50 rounded-lg">
+                  <Target className="h-4 w-4 text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Changes Requested</p>
+                  <p className="text-xl font-bold">
+                    {mockPRs.filter(pr => pr.status === 'changes-requested').length}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-green-50 rounded-lg">
+                  <Zap className="h-4 w-4 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Merged</p>
+                  <p className="text-xl font-bold">
+                    {mockPRs.filter(pr => pr.status === 'merged').length}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-purple-50 rounded-lg">
+                  <Calendar className="h-4 w-4 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">This Week</p>
+                  <p className="text-xl font-bold">{mockPRs.length}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Reviews Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Pull Requests</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {mockPRs.map((pr) => (
+                <div key={pr.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge className={`${getStatusColor(pr.status)} text-xs`}>
+                          {getStatusIcon(pr.status)}
+                          <span className="ml-1">{pr.status.replace('-', ' ')}</span>
+                        </Badge>
+                        {pr.task_id && (
+                          <Badge variant="outline" className="text-xs">
+                            Linked to Task
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <h4 className="font-medium mb-1">{pr.title}</h4>
+                      
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span>#{pr.id}</span>
+                        <span>by {pr.reviewer}</span>
+                        <span>{format(new Date(pr.created_at), 'MMM d, yyyy')}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 ml-4">
+                      <Button variant="ghost" size="sm">
+                        View PR
+                      </Button>
+                      <Button variant="ghost" size="sm">
+                        Link to Task
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* GitHub Integration Setup */}
+        <Card className="border-dashed">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-muted rounded-lg">
+                <GitPullRequest className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-medium mb-1">Connect GitHub Repository</h3>
+                <p className="text-sm text-muted-foreground">
+                  Automatically sync pull requests and reviews from your GitHub repository
+                </p>
+              </div>
+              <Button>Connect GitHub</Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-      
-      <Card>
-        <CardContent className="p-8 text-center">
-          <GitPullRequest className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-medium mb-2">No reviews yet</h3>
-          <p className="text-muted-foreground">
-            Connect your GitHub repository to track pull request reviews here.
-          </p>
-        </CardContent>
-      </Card>
-    </div>
-  );
+    );
+  };
 
   const renderCodeView = () => (
     <div className="space-y-6">
