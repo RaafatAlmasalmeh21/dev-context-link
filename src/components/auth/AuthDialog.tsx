@@ -21,19 +21,28 @@ export const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
   const handleSignUp = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+        },
       });
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "Account created successfully!",
-      });
-      
-      onOpenChange(false);
+      if (data.user && !data.session) {
+        toast({
+          title: "Check your email",
+          description: "We've sent you a confirmation link. Please check your email and click the link to verify your account, then try signing in again.",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Account created successfully!",
+        });
+        onOpenChange(false);
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -53,7 +62,22 @@ export const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        if (error.message === "Invalid login credentials") {
+          toast({
+            title: "Login Failed",
+            description: "Invalid email or password. If you just signed up, please check your email for a confirmation link first.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
+        return;
+      }
 
       toast({
         title: "Success",
@@ -78,6 +102,10 @@ export const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
         <DialogHeader>
           <DialogTitle>Authentication Required</DialogTitle>
         </DialogHeader>
+        
+        <div className="text-sm text-muted-foreground mb-4">
+          <p>Please sign in to access your tasks and features.</p>
+        </div>
         
         <Tabs defaultValue="signin" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
