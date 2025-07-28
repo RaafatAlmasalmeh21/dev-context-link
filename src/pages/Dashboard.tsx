@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { TaskDialog } from "@/components/tasks/TaskDialog";
 import { QuickPrompt } from "@/components/prompts/QuickPrompt";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Task, TaskStatus, Prompt } from "@/types";
 import { Plus, Calendar, Target, Zap, GitPullRequest, Code2, FolderOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -54,6 +57,18 @@ export const Dashboard = () => {
   const [editingTask, setEditingTask] = useState<Task | undefined>();
   const [initialStatus, setInitialStatus] = useState<TaskStatus>('todo');
   const [selectedTask, setSelectedTask] = useState<Task | undefined>();
+  const [githubToken, setGithubToken] = useState<string>('');
+  const [githubConnected, setGithubConnected] = useState(false);
+  const [showGithubDialog, setShowGithubDialog] = useState(false);
+
+  // Check for existing GitHub token on mount
+  useEffect(() => {
+    const token = localStorage.getItem('github_token');
+    if (token) {
+      setGithubToken(token);
+      setGithubConnected(true);
+    }
+  }, []);
 
   const handleTaskSave = (taskData: Partial<Task>) => {
     if (taskData.id) {
@@ -106,13 +121,68 @@ export const Dashboard = () => {
       prompt_text: promptText,
       response_snippet: response,
       created_at: new Date(),
-      task_id: taskId,
-      tags: [],
+      task_id: taskId || null,
+      tags: ['general']
     };
-    setPrompts(prev => [...prev, newPrompt]);
+    
+    setPrompts(prev => [newPrompt, ...prev]);
     toast({
       title: "Prompt saved",
       description: "Your prompt and response have been saved.",
+    });
+  };
+
+  const handleGithubConnect = async () => {
+    if (!githubToken.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid GitHub token.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Test the GitHub token by making a request to the GitHub API
+      const response = await fetch('https://api.github.com/user', {
+        headers: {
+          'Authorization': `token ${githubToken}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        localStorage.setItem('github_token', githubToken);
+        setGithubConnected(true);
+        setShowGithubDialog(false);
+        toast({
+          title: "GitHub Connected",
+          description: `Successfully connected as ${userData.login}`,
+        });
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: "Invalid GitHub token. Please check your token and try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Connection Error",
+        description: "Failed to connect to GitHub. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleGithubDisconnect = () => {
+    localStorage.removeItem('github_token');
+    setGithubToken('');
+    setGithubConnected(false);
+    toast({
+      title: "GitHub Disconnected",
+      description: "Your GitHub connection has been removed.",
     });
   };
 
@@ -225,37 +295,38 @@ export const Dashboard = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Saved Prompts</h2>
+        <Button onClick={() => setActiveView('today')}>
+          Back to Today
+        </Button>
       </div>
+      
       <div className="grid gap-4">
         {prompts.map((prompt) => (
-          <Card key={prompt.id}>
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <CardTitle className="text-base">
-                  {prompt.prompt_text.substring(0, 100)}...
-                </CardTitle>
-                {prompt.task_id && (
-                  <Badge variant="outline">
-                    Task: {tasks.find(t => t.id === prompt.task_id)?.title}
-                  </Badge>
-                )}
+          <Card key={prompt.id} className="p-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">
+                  {prompt.tags?.[0] || 'General'}
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  {format(new Date(prompt.created_at), 'MMM d, yyyy')}
+                </span>
               </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                {prompt.response_snippet.substring(0, 200)}...
+              <p className="font-medium">{prompt.prompt_text}</p>
+              <p className="text-sm text-muted-foreground line-clamp-2">
+                {prompt.response_snippet}
               </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                {prompt.created_at.toLocaleDateString()}
-              </p>
-            </CardContent>
+            </div>
           </Card>
         ))}
+        
         {prompts.length === 0 && (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <p className="text-muted-foreground">No prompts saved yet</p>
-            </CardContent>
+          <Card className="p-8 text-center">
+            <Zap className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-medium mb-2">No prompts saved yet</h3>
+            <p className="text-muted-foreground">
+              Save prompts from the Today view to see them here.
+            </p>
           </Card>
         )}
       </div>
@@ -320,9 +391,12 @@ export const Dashboard = () => {
             <p className="text-muted-foreground">Track GitHub pull request reviews and link them to tasks</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline">
+            <Button 
+              variant="outline"
+              onClick={githubConnected ? handleGithubDisconnect : () => setShowGithubDialog(true)}
+            >
               <GitPullRequest className="h-4 w-4 mr-2" />
-              Sync GitHub
+              {githubConnected ? 'Disconnect GitHub' : 'Sync GitHub'}
             </Button>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -451,12 +525,22 @@ export const Dashboard = () => {
                 <GitPullRequest className="h-6 w-6" />
               </div>
               <div className="flex-1">
-                <h3 className="font-medium mb-1">Connect GitHub Repository</h3>
+                <h3 className="font-medium mb-1">
+                  {githubConnected ? 'GitHub Connected' : 'Connect GitHub Repository'}
+                </h3>
                 <p className="text-sm text-muted-foreground">
-                  Automatically sync pull requests and reviews from your GitHub repository
+                  {githubConnected 
+                    ? 'Your GitHub repository is connected and ready to sync pull requests'
+                    : 'Automatically sync pull requests and reviews from your GitHub repository'
+                  }
                 </p>
               </div>
-              <Button>Connect GitHub</Button>
+              <Button 
+                onClick={githubConnected ? handleGithubDisconnect : () => setShowGithubDialog(true)}
+                variant={githubConnected ? "outline" : "default"}
+              >
+                {githubConnected ? 'Disconnect' : 'Connect GitHub'}
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -535,10 +619,55 @@ export const Dashboard = () => {
       <TaskDialog
         open={taskDialogOpen}
         onOpenChange={setTaskDialogOpen}
+        onSave={handleTaskSave}
         task={editingTask}
         initialStatus={initialStatus}
-        onSave={handleTaskSave}
       />
+
+      {/* GitHub Connection Dialog */}
+      <Dialog open={showGithubDialog} onOpenChange={setShowGithubDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Connect to GitHub</DialogTitle>
+            <DialogDescription>
+              Enter your GitHub Personal Access Token to connect your repository.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="github-token">GitHub Personal Access Token</Label>
+              <Input
+                id="github-token"
+                type="password"
+                placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                value={githubToken}
+                onChange={(e) => setGithubToken(e.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">
+                You can create a token at{' '}
+                <a 
+                  href="https://github.com/settings/tokens" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary underline"
+                >
+                  GitHub Settings → Personal Access Tokens
+                </a>
+              </p>
+            </div>
+            
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowGithubDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleGithubConnect}>
+                Connect
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
