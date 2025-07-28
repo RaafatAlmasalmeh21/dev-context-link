@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -26,7 +26,7 @@ serve(async (req) => {
     console.log('Processing AI chat request:', { prompt: prompt.substring(0, 100), taskId });
 
     // Initialize Supabase client with the incoming JWT for RLS
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: {
         headers: {
           Authorization: req.headers.get('Authorization')!
@@ -41,7 +41,7 @@ serve(async (req) => {
 
     // Build context-aware prompt
     let fullPrompt = prompt;
-    let contextData = context || {};
+    const contextData = context || {};
 
     // If linked to a task, get task context
     if (taskId) {
