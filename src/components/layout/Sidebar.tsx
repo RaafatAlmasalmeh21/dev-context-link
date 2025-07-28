@@ -23,10 +23,11 @@ export const Sidebar = ({ activeView, onViewChange }: SidebarProps) => {
   const navigation = [
     { id: 'today', label: 'Today', icon: Calendar },
     { id: 'tasks', label: 'All Tasks', icon: CheckSquare },
+    { id: 'projects', label: 'Projects', icon: FolderOpen },
     { id: 'prompts', label: 'Prompts', icon: MessageSquare },
     { id: 'reviews', label: 'Reviews', icon: GitPullRequest },
     { id: 'code', label: 'Code Snippets', icon: Code2 },
-    { id: 'projects', label: 'Projects', icon: FolderOpen },
+    { id: 'analytics', label: 'Analytics', icon: Zap },
   ];
 
   return (

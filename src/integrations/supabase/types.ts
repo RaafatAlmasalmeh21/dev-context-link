@@ -201,6 +201,36 @@ export type Database = {
           },
         ]
       }
+      code_snippets: {
+        Row: {
+          code_text: string
+          commit_sha: string | null
+          created_at: string
+          file_path: string
+          id: string
+          task_id: string | null
+          user_id: string
+        }
+        Insert: {
+          code_text: string
+          commit_sha?: string | null
+          created_at?: string
+          file_path: string
+          id?: string
+          task_id?: string | null
+          user_id: string
+        }
+        Update: {
+          code_text?: string
+          commit_sha?: string | null
+          created_at?: string
+          file_path?: string
+          id?: string
+          task_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       github_repositories: {
         Row: {
           clone_url: string | null
@@ -316,6 +346,39 @@ export type Database = {
           id?: string
           preferred_language?: string | null
           risk_profile?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          repo_url: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          repo_url?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          repo_url?: string | null
+          status?: string
           updated_at?: string
           user_id?: string
         }

@@ -4,6 +4,11 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { TaskDialog } from "@/components/tasks/TaskDialog";
 import { ReviewDialog } from "@/components/reviews/ReviewDialog";
+import { ProjectDialog } from "@/components/projects/ProjectDialog";
+import { ProjectCard } from "@/components/projects/ProjectCard";
+import { CodeSnippetDialog } from "@/components/snippets/CodeSnippetDialog";
+import { CodeSnippetCard } from "@/components/snippets/CodeSnippetCard";
+import { TaskFilters } from "@/components/tasks/TaskFilters";
 import { QuickPrompt } from "@/components/prompts/QuickPrompt";
 import { EnhancedPromptView } from "@/components/prompts/EnhancedPromptView";
 import { SmartAnalyticsDashboard } from "@/components/analytics/SmartAnalyticsDashboard";
@@ -14,8 +19,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Task, TaskStatus, TaskType, Priority, Prompt, Review, ReviewStatus } from "@/types";
-import { Plus, Calendar, Target, Zap, GitPullRequest, Code2, FolderOpen } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Task, TaskStatus, TaskType, Priority, Prompt, Review, ReviewStatus, Project, Snippet } from "@/types";
+import { Plus, Calendar, Target, Zap, GitPullRequest, Code2, FolderOpen, Search, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,7 +32,39 @@ export const Dashboard = () => {
   const { toast } = useToast();
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
 
-  // Check auth status and fetch tasks
+  // State management
+  const [activeView, setActiveView] = useState('today');
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [snippets, setSnippets] = useState<Snippet[]>([]);
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  
+  // Dialog states
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
+  const [snippetDialogOpen, setSnippetDialogOpen] = useState(false);
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  
+  // Editing states
+  const [editingTask, setEditingTask] = useState<Task | undefined>();
+  const [editingProject, setEditingProject] = useState<Project | undefined>();
+  const [editingSnippet, setEditingSnippet] = useState<Snippet | undefined>();
+  const [editingReview, setEditingReview] = useState<Review | undefined>();
+  
+  const [initialStatus, setInitialStatus] = useState<TaskStatus>('todo');
+  const [selectedTask, setSelectedTask] = useState<Task | undefined>();
+  const [githubToken, setGithubToken] = useState<string>('');
+  const [githubConnected, setGithubConnected] = useState(false);
+  const [showGithubDialog, setShowGithubDialog] = useState(false);
+
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [taskFilters, setTaskFilters] = useState<any>({});
+  const [sortBy, setSortBy] = useState("updated_at");
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Check auth status and fetch data
   useEffect(() => {
     if (!loading && !user) {
       setAuthDialogOpen(true);
@@ -34,9 +72,26 @@ export const Dashboard = () => {
     }
 
     if (user) {
-      fetchTasks();
+      fetchAllData();
     }
   }, [user, loading]);
+
+  // Check for existing GitHub token on mount
+  useEffect(() => {
+    const token = localStorage.getItem('github_token');
+    if (token) {
+      setGithubToken(token);
+      setGithubConnected(true);
+    }
+  }, []);
+
+  const fetchAllData = async () => {
+    await Promise.all([
+      fetchTasks(),
+      fetchProjects(),
+      fetchSnippets()
+    ]);
+  };
 
   const fetchTasks = async () => {
     try {
@@ -57,7 +112,6 @@ export const Dashboard = () => {
           updated_at: new Date(task.updated_at),
         }));
         setTasks(typedTasks);
-        console.log('Fetched tasks:', typedTasks);
       }
     } catch (error) {
       console.error('Error fetching tasks:', error);
@@ -68,29 +122,58 @@ export const Dashboard = () => {
       });
     }
   };
-  const [activeView, setActiveView] = useState('today');
-  const [tasks, setTasks] = useState<Task[]>([]);
-  
-  const [prompts, setPrompts] = useState<Prompt[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
-  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | undefined>();
-  const [editingReview, setEditingReview] = useState<Review | undefined>();
-  const [initialStatus, setInitialStatus] = useState<TaskStatus>('todo');
-  const [selectedTask, setSelectedTask] = useState<Task | undefined>();
-  const [githubToken, setGithubToken] = useState<string>('');
-  const [githubConnected, setGithubConnected] = useState(false);
-  const [showGithubDialog, setShowGithubDialog] = useState(false);
 
-  // Check for existing GitHub token on mount
-  useEffect(() => {
-    const token = localStorage.getItem('github_token');
-    if (token) {
-      setGithubToken(token);
-      setGithubConnected(true);
+  const fetchProjects = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      if (data) {
+        const typedProjects = data.map(project => ({
+          ...project,
+          status: project.status as any,
+          created_at: new Date(project.created_at),
+          updated_at: new Date(project.updated_at),
+        }));
+        setProjects(typedProjects);
+      }
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch projects",
+        variant: "destructive",
+      });
     }
-  }, []);
+  };
+
+  const fetchSnippets = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('code_snippets')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      if (data) {
+        const typedSnippets = data.map(snippet => ({
+          ...snippet,
+          created_at: new Date(snippet.created_at),
+        }));
+        setSnippets(typedSnippets);
+      }
+    } catch (error) {
+      console.error('Error fetching snippets:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch code snippets",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleTaskSave = async (taskData: Partial<Task>) => {
     if (!user) return;
@@ -106,6 +189,8 @@ export const Dashboard = () => {
         estimated_hours: taskData.estimated_hours,
         actual_hours: taskData.actual_hours,
         user_id: user.id,
+        project_id: taskData.project_id,
+        tags: taskData.tags,
       };
 
       if (taskData.id && tasks.find(t => t.id === taskData.id)) {
@@ -164,6 +249,133 @@ export const Dashboard = () => {
     }
   };
 
+  const handleProjectSave = async (projectData: Partial<Project>) => {
+    if (!user) return;
+
+    try {
+      const dbProjectData = {
+        name: projectData.name!,
+        description: projectData.description || '',
+        repo_url: projectData.repo_url,
+        status: projectData.status!,
+        user_id: user.id,
+      };
+
+      if (projectData.id && projects.find(p => p.id === projectData.id)) {
+        // Update existing project
+        const { error } = await supabase
+          .from('projects')
+          .update(dbProjectData)
+          .eq('id', projectData.id);
+
+        if (error) throw error;
+        
+        setProjects(prev => prev.map(p => 
+          p.id === projectData.id 
+            ? { ...p, ...projectData, updated_at: new Date() }
+            : p
+        ));
+        
+        toast({
+          title: "Project updated",
+          description: "Your project has been successfully updated.",
+        });
+      } else {
+        // Create new project
+        const { data, error } = await supabase
+          .from('projects')
+          .insert(dbProjectData)
+          .select()
+          .single();
+
+        if (error) throw error;
+        
+        if (data) {
+          const newProject = {
+            ...data,
+            status: data.status as any,
+            created_at: new Date(data.created_at),
+            updated_at: new Date(data.updated_at),
+          };
+          setProjects(prev => [...prev, newProject]);
+          toast({
+            title: "Project created",
+            description: "Your new project has been created.",
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error saving project:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save project",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSnippetSave = async (snippetData: Partial<Snippet>) => {
+    if (!user) return;
+
+    try {
+      const dbSnippetData = {
+        file_path: snippetData.file_path!,
+        code_text: snippetData.code_text!,
+        commit_sha: snippetData.commit_sha,
+        task_id: snippetData.task_id,
+        user_id: user.id,
+      };
+
+      if (snippetData.id && snippets.find(s => s.id === snippetData.id)) {
+        // Update existing snippet
+        const { error } = await supabase
+          .from('code_snippets')
+          .update(dbSnippetData)
+          .eq('id', snippetData.id);
+
+        if (error) throw error;
+        
+        setSnippets(prev => prev.map(s => 
+          s.id === snippetData.id 
+            ? { ...s, ...snippetData }
+            : s
+        ));
+        
+        toast({
+          title: "Snippet updated",
+          description: "Your code snippet has been updated.",
+        });
+      } else {
+        // Create new snippet
+        const { data, error } = await supabase
+          .from('code_snippets')
+          .insert(dbSnippetData)
+          .select()
+          .single();
+
+        if (error) throw error;
+        
+        if (data) {
+          const newSnippet = {
+            ...data,
+            created_at: new Date(data.created_at),
+          };
+          setSnippets(prev => [...prev, newSnippet]);
+          toast({
+            title: "Snippet saved",
+            description: "Your code snippet has been saved.",
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error saving snippet:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save snippet",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
@@ -225,6 +437,43 @@ export const Dashboard = () => {
     setTaskDialogOpen(true);
   };
 
+  // Filter and sort tasks
+  const filteredTasks = tasks.filter(task => {
+    if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !task.description?.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+    
+    if (taskFilters.status && task.status !== taskFilters.status) return false;
+    if (taskFilters.type && task.type !== taskFilters.type) return false;
+    if (taskFilters.priority && task.priority !== taskFilters.priority) return false;
+    if (taskFilters.tags && taskFilters.tags.length > 0) {
+      const hasTag = taskFilters.tags.some(tag => task.tags?.includes(tag));
+      if (!hasTag) return false;
+    }
+    
+    return true;
+  }).sort((a, b) => {
+    const aValue = a[sortBy as keyof Task];
+    const bValue = b[sortBy as keyof Task];
+    
+    if (sortOrder === 'asc') {
+      return aValue > bValue ? 1 : -1;
+    } else {
+      return aValue < bValue ? 1 : -1;
+    }
+  });
+
+  const todayTasks = filteredTasks.filter(task => {
+    if (task.due_date) {
+      const today = new Date();
+      const dueDate = new Date(task.due_date);
+      return dueDate.toDateString() === today.toDateString();
+    }
+    return task.status === 'doing' || task.status === 'todo';
+  });
+
+  // GitHub handlers
   const handleGithubConnect = async () => {
     if (!githubToken.trim()) {
       toast({
@@ -236,7 +485,6 @@ export const Dashboard = () => {
     }
 
     try {
-      // Test the GitHub token by making a request to the GitHub API
       const response = await fetch('https://api.github.com/user', {
         headers: {
           'Authorization': `token ${githubToken}`,
@@ -269,6 +517,17 @@ export const Dashboard = () => {
     }
   };
 
+  const handleGithubDisconnect = () => {
+    localStorage.removeItem('github_token');
+    setGithubToken('');
+    setGithubConnected(false);
+    toast({
+      title: "GitHub Disconnected",
+      description: "Your GitHub connection has been removed.",
+    });
+  };
+
+  // Review handlers
   const handleAddReview = () => {
     setEditingReview(undefined);
     setReviewDialogOpen(true);
@@ -281,7 +540,6 @@ export const Dashboard = () => {
 
   const handleReviewSave = (reviewData: Partial<Review>) => {
     if (reviewData.id) {
-      // Update existing review
       setReviews(prev => prev.map(r => 
         r.id === reviewData.id 
           ? { ...r, ...reviewData, updated_at: new Date() }
@@ -292,7 +550,6 @@ export const Dashboard = () => {
         description: "Your review has been successfully updated.",
       });
     } else {
-      // Create new review
       const newReview: Review = {
         id: Date.now().toString(),
         pr_url: reviewData.pr_url!,
@@ -311,25 +568,7 @@ export const Dashboard = () => {
     }
   };
 
-  const handleGithubDisconnect = () => {
-    localStorage.removeItem('github_token');
-    setGithubToken('');
-    setGithubConnected(false);
-    toast({
-      title: "GitHub Disconnected",
-      description: "Your GitHub connection has been removed.",
-    });
-  };
-
-  const todayTasks = tasks.filter(task => {
-    if (task.due_date) {
-      const today = new Date();
-      const dueDate = new Date(task.due_date);
-      return dueDate.toDateString() === today.toDateString();
-    }
-    return task.status === 'doing' || task.status === 'todo';
-  });
-
+  // Render methods for different views
   const renderTodayView = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -351,7 +590,7 @@ export const Dashboard = () => {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -382,10 +621,22 @@ export const Dashboard = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Prompts Saved</p>
-                <p className="text-2xl font-bold">{prompts.length}</p>
+                <p className="text-sm text-muted-foreground">Projects</p>
+                <p className="text-2xl font-bold">{projects.length}</p>
               </div>
-              <Zap className="h-8 w-8 text-warning" />
+              <FolderOpen className="h-8 w-8 text-warning" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Code Snippets</p>
+                <p className="text-2xl font-bold">{snippets.length}</p>
+              </div>
+              <Code2 className="h-8 w-8 text-success" />
             </div>
           </CardContent>
         </Card>
@@ -397,6 +648,7 @@ export const Dashboard = () => {
             tasks={todayTasks}
             onAddTask={handleAddTask}
             onTaskStatusChange={handleTaskStatusChange}
+            onTaskClick={handleTaskClick}
           />
         </div>
         <div>
@@ -418,17 +670,123 @@ export const Dashboard = () => {
           Add Task
         </Button>
       </div>
-        <KanbanBoard 
-          tasks={tasks} 
-          onTaskClick={handleTaskClick}
-          onAddTask={handleAddTask}
-          onTaskStatusChange={handleTaskStatusChange}
-        />
+
+      <TaskFilters
+        tasks={tasks}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        selectedFilters={taskFilters}
+        onFilterChange={setTaskFilters}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSortChange={(sortBy, order) => {
+          setSortBy(sortBy);
+          setSortOrder(order);
+        }}
+      />
+
+      <KanbanBoard 
+        tasks={filteredTasks} 
+        onTaskClick={handleTaskClick}
+        onAddTask={handleAddTask}
+        onTaskStatusChange={handleTaskStatusChange}
+      />
     </div>
   );
 
   const renderPromptsView = () => (
     <EnhancedPromptView />
+  );
+
+  const renderProjectsView = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Projects</h2>
+          <p className="text-muted-foreground">Manage your projects and track progress</p>
+        </div>
+        <Button onClick={() => setProjectDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Project
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {projects.map((project) => {
+          const projectTasks = tasks.filter(task => task.project_id === project.id);
+          const completedTasks = projectTasks.filter(task => task.status === 'done').length;
+          
+          return (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              taskCount={projectTasks.length}
+              completedTasks={completedTasks}
+              onClick={() => {
+                setEditingProject(project);
+                setProjectDialogOpen(true);
+              }}
+            />
+          );
+        })}
+        
+        {projects.length === 0 && (
+          <div className="col-span-full text-center py-12">
+            <FolderOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-muted-foreground mb-2">No projects yet</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Create your first project to organize your tasks and track progress.
+            </p>
+            <Button onClick={() => setProjectDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Project
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderCodeSnippetsView = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Code Snippets</h2>
+          <p className="text-muted-foreground">Save and organize your code snippets</p>
+        </div>
+        <Button onClick={() => setSnippetDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Snippet
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {snippets.map((snippet) => (
+          <CodeSnippetCard
+            key={snippet.id}
+            snippet={snippet}
+            onEdit={() => {
+              setEditingSnippet(snippet);
+              setSnippetDialogOpen(true);
+            }}
+          />
+        ))}
+        
+        {snippets.length === 0 && (
+          <div className="col-span-full text-center py-12">
+            <Code2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-muted-foreground mb-2">No code snippets yet</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Start saving useful code snippets for quick reference and reuse.
+            </p>
+            <Button onClick={() => setSnippetDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Snippet
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 
   const renderReviewsView = () => {
@@ -443,26 +801,6 @@ export const Dashboard = () => {
         task_id: "1",
         created_at: new Date("2024-01-15"),
         updated_at: new Date("2024-01-15")
-      },
-      {
-        id: "2", 
-        pr_url: "https://github.com/user/repo/pull/124",
-        notes: "Database connection needs optimization before merge",
-        status: "changes-requested" as ReviewStatus,
-        reviewer: "jane_smith",
-        task_id: undefined,
-        created_at: new Date("2024-01-14"),
-        updated_at: new Date("2024-01-14")
-      },
-      {
-        id: "3",
-        pr_url: "https://github.com/user/repo/pull/125", 
-        notes: "Documentation update completed successfully",
-        status: "merged" as ReviewStatus,
-        reviewer: "bob_wilson",
-        task_id: "3",
-        created_at: new Date("2024-01-13"),
-        updated_at: new Date("2024-01-13")
       }
     ];
 
@@ -472,15 +810,6 @@ export const Dashboard = () => {
         case 'changes-requested': return 'text-orange-600 bg-orange-50 border-orange-200';
         case 'merged': return 'text-green-600 bg-green-50 border-green-200';
         default: return 'text-gray-600 bg-gray-50 border-gray-200';
-      }
-    };
-
-    const getStatusIcon = (status: string) => {
-      switch (status) {
-        case 'open': return <GitPullRequest className="h-4 w-4" />;
-        case 'changes-requested': return <Target className="h-4 w-4" />;
-        case 'merged': return <Zap className="h-4 w-4" />;
-        default: return <GitPullRequest className="h-4 w-4" />;
       }
     };
 
@@ -506,196 +835,50 @@ export const Dashboard = () => {
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-blue-50 rounded-lg">
-                  <GitPullRequest className="h-4 w-4 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Open</p>
-                  <p className="text-xl font-bold">
-                    {allReviews.filter(pr => pr.status === 'open').length}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-orange-50 rounded-lg">
-                  <Target className="h-4 w-4 text-orange-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Changes Requested</p>
-                  <p className="text-xl font-bold">
-                    {allReviews.filter(pr => pr.status === 'changes-requested').length}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-green-50 rounded-lg">
-                  <Zap className="h-4 w-4 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Merged</p>
-                  <p className="text-xl font-bold">
-                    {allReviews.filter(pr => pr.status === 'merged').length}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-purple-50 rounded-lg">
-                  <Calendar className="h-4 w-4 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">This Week</p>
-                  <p className="text-xl font-bold">{allReviews.length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Reviews Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Pull Requests</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {allReviews.map((review) => (
-                <div 
-                  key={review.id} 
-                  className="border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer"
-                  onClick={() => handleReviewClick(review)}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge className={`${getStatusColor(review.status)} text-xs`}>
-                          {getStatusIcon(review.status)}
-                          <span className="ml-1">{review.status.replace('-', ' ')}</span>
-                        </Badge>
-                        {review.task_id && (
-                          <Badge variant="outline" className="text-xs">
-                            Linked to Task
-                          </Badge>
-                        )}
-                      </div>
-                      
-                      <h4 className="font-medium mb-1">
-                        {review.pr_url.split('/').pop() || 'Pull Request'}
-                      </h4>
-                      
-                      <p className="text-sm text-muted-foreground mb-2">{review.notes}</p>
-                      
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>by {review.reviewer}</span>
-                        <span>{format(review.created_at, 'MMM d, yyyy')}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 ml-4">
-                      <Button variant="ghost" size="sm" onClick={(e) => {
-                        e.stopPropagation();
-                        window.open(review.pr_url, '_blank');
-                      }}>
-                        View PR
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        Link to Task
-                      </Button>
+        <div className="grid gap-4">
+          {allReviews.map((review) => (
+            <Card 
+              key={review.id} 
+              className="hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => handleReviewClick(review)}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <GitPullRequest className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <h3 className="font-medium">{review.pr_url.split('/').pop()}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Reviewed by {review.reviewer}
+                      </p>
                     </div>
                   </div>
+                  <Badge className={getStatusColor(review.status)}>
+                    {review.status.replace('-', ' ')}
+                  </Badge>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* GitHub Integration Setup */}
-        <Card className="border-dashed">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-muted rounded-lg">
-                <GitPullRequest className="h-6 w-6" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-medium mb-1">
-                  {githubConnected ? 'GitHub Connected' : 'Connect GitHub Repository'}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {githubConnected 
-                    ? 'Your GitHub repository is connected and ready to sync pull requests'
-                    : 'Automatically sync pull requests and reviews from your GitHub repository'
-                  }
-                </p>
-              </div>
-              <Button 
-                onClick={githubConnected ? handleGithubDisconnect : () => setShowGithubDialog(true)}
-                variant={githubConnected ? "outline" : "default"}
-              >
-                {githubConnected ? 'Disconnect' : 'Connect GitHub'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-2">{review.notes}</p>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{format(review.created_at, 'MMM d, yyyy')}</span>
+                  {review.task_id && (
+                    <span>Linked to task</span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   };
 
-  const renderCodeView = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Code Snippets</h2>
-      </div>
-      
-      <Card>
-        <CardContent className="p-8 text-center">
-          <Code2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-medium mb-2">No code snippets yet</h3>
-          <p className="text-muted-foreground">
-            Save important code snippets and link them to your tasks.
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+  const renderAnalyticsView = () => (
+    <SmartAnalyticsDashboard />
   );
 
-  const renderProjectsView = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Projects</h2>
-      </div>
-      
-      <Card>
-        <CardContent className="p-8 text-center">
-          <FolderOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-medium mb-2">No projects yet</h3>
-          <p className="text-muted-foreground">
-            Create and organize your development projects here.
-          </p>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  const renderContent = () => {
+  const renderActiveView = () => {
     switch (activeView) {
       case 'today':
         return renderTodayView();
@@ -705,49 +888,78 @@ export const Dashboard = () => {
         return renderPromptsView();
       case 'reviews':
         return renderReviewsView();
-      case 'analytics':
-        return <SmartAnalyticsDashboard />;
       case 'code':
-        return renderCodeView();
+        return renderCodeSnippetsView();
       case 'projects':
         return renderProjectsView();
+      case 'analytics':
+        return renderAnalyticsView();
       default:
         return renderTodayView();
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-screen flex flex-col">
+    <div className="min-h-screen bg-background">
       <Header />
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar 
-          activeView={activeView} 
-          onViewChange={setActiveView} 
-        />
-        <main className="flex-1 overflow-auto p-6">
-          {renderContent()}
+      <div className="flex">
+        <Sidebar activeView={activeView} onViewChange={setActiveView} />
+        <main className="flex-1 p-6">
+          {renderActiveView()}
         </main>
       </div>
-      
-      <AuthDialog 
-        open={authDialogOpen}
-        onOpenChange={setAuthDialogOpen}
-      />
 
+      {/* Dialogs */}
       <TaskDialog
+        task={editingTask}
         open={taskDialogOpen}
         onOpenChange={setTaskDialogOpen}
         onSave={handleTaskSave}
-        task={editingTask}
-        initialStatus={initialStatus as "todo" | "done" | "in-progress"}
+        initialStatus={initialStatus}
       />
-      
+
+      <ProjectDialog
+        project={editingProject}
+        open={projectDialogOpen}
+        onOpenChange={(open) => {
+          setProjectDialogOpen(open);
+          if (!open) setEditingProject(undefined);
+        }}
+        onSave={handleProjectSave}
+      />
+
+      <CodeSnippetDialog
+        snippet={editingSnippet}
+        open={snippetDialogOpen}
+        onOpenChange={(open) => {
+          setSnippetDialogOpen(open);
+          if (!open) setEditingSnippet(undefined);
+        }}
+        onSave={handleSnippetSave}
+      />
+
       <ReviewDialog
+        review={editingReview}
         open={reviewDialogOpen}
         onOpenChange={setReviewDialogOpen}
         onSave={handleReviewSave}
-        review={editingReview}
         tasks={tasks}
+      />
+
+      <AuthDialog
+        open={authDialogOpen}
+        onOpenChange={setAuthDialogOpen}
       />
 
       {/* GitHub Connection Dialog */}
@@ -756,33 +968,20 @@ export const Dashboard = () => {
           <DialogHeader>
             <DialogTitle>Connect to GitHub</DialogTitle>
             <DialogDescription>
-              Enter your GitHub Personal Access Token to connect your repository.
+              Enter your GitHub personal access token to sync with your repositories.
             </DialogDescription>
           </DialogHeader>
-          
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="github-token">GitHub Personal Access Token</Label>
+              <Label htmlFor="github-token">Personal Access Token</Label>
               <Input
                 id="github-token"
                 type="password"
-                placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
                 value={githubToken}
                 onChange={(e) => setGithubToken(e.target.value)}
+                placeholder="ghp_xxxxxxxxxxxx"
               />
-              <p className="text-sm text-muted-foreground">
-                You can create a token at{' '}
-                <a 
-                  href="https://github.com/settings/tokens" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary underline"
-                >
-                  GitHub Settings → Personal Access Tokens
-                </a>
-              </p>
             </div>
-            
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowGithubDialog(false)}>
                 Cancel

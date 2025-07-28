@@ -49,6 +49,7 @@ export interface Snippet {
   commit_sha?: string;
   task_id?: string;
   task?: Task;
+  user_id?: string;
   created_at: Date;
 }
 

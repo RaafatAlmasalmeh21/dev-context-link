@@ -14,7 +14,7 @@ interface TaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (task: Task) => void;
-  initialStatus?: "todo" | "in-progress" | "done";
+  initialStatus?: TaskStatus;
 }
 
 export const TaskDialog = ({ task, open, onOpenChange, onSave, initialStatus = "todo" }: TaskDialogProps) => {
