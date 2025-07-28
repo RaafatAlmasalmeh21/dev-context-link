@@ -20,13 +20,13 @@ double_confirm_changes = true
 enable_confirmations = false
 
 [functions.ai-chat]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ai-task-assistant]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ai-task-estimator]
-verify_jwt = false
+verify_jwt = true
 
 [functions.productivity-insights]
-verify_jwt = false
+verify_jwt = true
