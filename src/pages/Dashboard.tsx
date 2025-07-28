@@ -3,6 +3,7 @@ import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { TaskDialog } from "@/components/tasks/TaskDialog";
+import { ReviewDialog } from "@/components/reviews/ReviewDialog";
 import { QuickPrompt } from "@/components/prompts/QuickPrompt";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -10,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Task, TaskStatus, Prompt } from "@/types";
+import { Task, TaskStatus, Prompt, Review, ReviewStatus } from "@/types";
 import { Plus, Calendar, Target, Zap, GitPullRequest, Code2, FolderOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -53,8 +54,11 @@ export const Dashboard = () => {
   ]);
   
   const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>();
+  const [editingReview, setEditingReview] = useState<Review | undefined>();
   const [initialStatus, setInitialStatus] = useState<TaskStatus>('todo');
   const [selectedTask, setSelectedTask] = useState<Task | undefined>();
   const [githubToken, setGithubToken] = useState<string>('');
@@ -172,6 +176,48 @@ export const Dashboard = () => {
         title: "Connection Error",
         description: "Failed to connect to GitHub. Please try again.",
         variant: "destructive"
+      });
+    }
+  };
+
+  const handleAddReview = () => {
+    setEditingReview(undefined);
+    setReviewDialogOpen(true);
+  };
+
+  const handleReviewClick = (review: Review) => {
+    setEditingReview(review);
+    setReviewDialogOpen(true);
+  };
+
+  const handleReviewSave = (reviewData: Partial<Review>) => {
+    if (reviewData.id) {
+      // Update existing review
+      setReviews(prev => prev.map(r => 
+        r.id === reviewData.id 
+          ? { ...r, ...reviewData, updated_at: new Date() }
+          : r
+      ));
+      toast({
+        title: "Review updated",
+        description: "Your review has been successfully updated.",
+      });
+    } else {
+      // Create new review
+      const newReview: Review = {
+        id: Date.now().toString(),
+        pr_url: reviewData.pr_url!,
+        notes: reviewData.notes!,
+        status: reviewData.status!,
+        reviewer: reviewData.reviewer!,
+        task_id: reviewData.task_id,
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+      setReviews(prev => [...prev, newReview]);
+      toast({
+        title: "Review added",
+        description: "Your new review has been added.",
       });
     }
   };
@@ -334,34 +380,37 @@ export const Dashboard = () => {
   );
 
   const renderReviewsView = () => {
-    // Mock data for demonstration
-    const mockPRs = [
+    // Use real reviews data with fallback to mock data for demo
+    const allReviews = reviews.length > 0 ? reviews : [
       {
-        id: 1,
-        title: "Add authentication middleware",
-        url: "https://github.com/user/repo/pull/123",
-        status: "open" as const,
+        id: "1",
+        pr_url: "https://github.com/user/repo/pull/123",
+        notes: "Authentication middleware looks good, just a few minor suggestions",
+        status: "open" as ReviewStatus,
         reviewer: "john_doe",
-        created_at: "2024-01-15",
-        task_id: "task-1"
+        task_id: "1",
+        created_at: new Date("2024-01-15"),
+        updated_at: new Date("2024-01-15")
       },
       {
-        id: 2,
-        title: "Fix database connection pooling",
-        url: "https://github.com/user/repo/pull/124",
-        status: "changes-requested" as const,
+        id: "2", 
+        pr_url: "https://github.com/user/repo/pull/124",
+        notes: "Database connection needs optimization before merge",
+        status: "changes-requested" as ReviewStatus,
         reviewer: "jane_smith",
-        created_at: "2024-01-14",
-        task_id: null
+        task_id: undefined,
+        created_at: new Date("2024-01-14"),
+        updated_at: new Date("2024-01-14")
       },
       {
-        id: 3,
-        title: "Update API documentation",
-        url: "https://github.com/user/repo/pull/125",
-        status: "merged" as const,
+        id: "3",
+        pr_url: "https://github.com/user/repo/pull/125", 
+        notes: "Documentation update completed successfully",
+        status: "merged" as ReviewStatus,
         reviewer: "bob_wilson",
-        created_at: "2024-01-13",
-        task_id: "task-3"
+        task_id: "3",
+        created_at: new Date("2024-01-13"),
+        updated_at: new Date("2024-01-13")
       }
     ];
 
@@ -398,7 +447,7 @@ export const Dashboard = () => {
               <GitPullRequest className="h-4 w-4 mr-2" />
               {githubConnected ? 'Disconnect GitHub' : 'Sync GitHub'}
             </Button>
-            <Button>
+            <Button onClick={handleAddReview}>
               <Plus className="h-4 w-4 mr-2" />
               Add Review
             </Button>
@@ -416,7 +465,7 @@ export const Dashboard = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Open</p>
                   <p className="text-xl font-bold">
-                    {mockPRs.filter(pr => pr.status === 'open').length}
+                    {allReviews.filter(pr => pr.status === 'open').length}
                   </p>
                 </div>
               </div>
@@ -432,7 +481,7 @@ export const Dashboard = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Changes Requested</p>
                   <p className="text-xl font-bold">
-                    {mockPRs.filter(pr => pr.status === 'changes-requested').length}
+                    {allReviews.filter(pr => pr.status === 'changes-requested').length}
                   </p>
                 </div>
               </div>
@@ -448,7 +497,7 @@ export const Dashboard = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Merged</p>
                   <p className="text-xl font-bold">
-                    {mockPRs.filter(pr => pr.status === 'merged').length}
+                    {allReviews.filter(pr => pr.status === 'merged').length}
                   </p>
                 </div>
               </div>
@@ -463,7 +512,7 @@ export const Dashboard = () => {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">This Week</p>
-                  <p className="text-xl font-bold">{mockPRs.length}</p>
+                  <p className="text-xl font-bold">{allReviews.length}</p>
                 </div>
               </div>
             </CardContent>
@@ -477,33 +526,43 @@ export const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {mockPRs.map((pr) => (
-                <div key={pr.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+              {allReviews.map((review) => (
+                <div 
+                  key={review.id} 
+                  className="border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => handleReviewClick(review)}
+                >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <Badge className={`${getStatusColor(pr.status)} text-xs`}>
-                          {getStatusIcon(pr.status)}
-                          <span className="ml-1">{pr.status.replace('-', ' ')}</span>
+                        <Badge className={`${getStatusColor(review.status)} text-xs`}>
+                          {getStatusIcon(review.status)}
+                          <span className="ml-1">{review.status.replace('-', ' ')}</span>
                         </Badge>
-                        {pr.task_id && (
+                        {review.task_id && (
                           <Badge variant="outline" className="text-xs">
                             Linked to Task
                           </Badge>
                         )}
                       </div>
                       
-                      <h4 className="font-medium mb-1">{pr.title}</h4>
+                      <h4 className="font-medium mb-1">
+                        {review.pr_url.split('/').pop() || 'Pull Request'}
+                      </h4>
+                      
+                      <p className="text-sm text-muted-foreground mb-2">{review.notes}</p>
                       
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>#{pr.id}</span>
-                        <span>by {pr.reviewer}</span>
-                        <span>{format(new Date(pr.created_at), 'MMM d, yyyy')}</span>
+                        <span>by {review.reviewer}</span>
+                        <span>{format(review.created_at, 'MMM d, yyyy')}</span>
                       </div>
                     </div>
                     
                     <div className="flex items-center gap-2 ml-4">
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(review.pr_url, '_blank');
+                      }}>
                         View PR
                       </Button>
                       <Button variant="ghost" size="sm">
@@ -622,6 +681,14 @@ export const Dashboard = () => {
         onSave={handleTaskSave}
         task={editingTask}
         initialStatus={initialStatus}
+      />
+      
+      <ReviewDialog
+        open={reviewDialogOpen}
+        onOpenChange={setReviewDialogOpen}
+        onSave={handleReviewSave}
+        review={editingReview}
+        tasks={tasks}
       />
 
       {/* GitHub Connection Dialog */}
