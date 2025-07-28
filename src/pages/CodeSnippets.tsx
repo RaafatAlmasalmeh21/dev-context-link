@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Plus, Grid3X3, List, Filter, SortAsc, SortDesc, Code2 } from 'lucide-react';
+import { Search, Plus, Grid3X3, List, Filter, SortAsc, SortDesc, Code2, ArrowLeft } from 'lucide-react';
 import { Snippet } from '@/types';
 
 export const CodeSnippets = () => {
@@ -58,14 +58,25 @@ export const CodeSnippets = () => {
       <div className="container mx-auto p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-              <Code2 className="h-8 w-8" />
-              Code Snippets
-            </h1>
-            <p className="text-muted-foreground">
-              Manage and organize your code snippets efficiently
-            </p>
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => window.history.back()}
+              className="gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+                <Code2 className="h-8 w-8" />
+                Code Snippets
+              </h1>
+              <p className="text-muted-foreground">
+                Manage and organize your code snippets efficiently
+              </p>
+            </div>
           </div>
           <Button onClick={handleCreateSnippet} className="gap-2">
             <Plus className="h-4 w-4" />
