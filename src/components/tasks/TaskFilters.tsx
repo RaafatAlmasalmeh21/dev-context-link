@@ -70,11 +70,11 @@ export const TaskFilters = ({
         </div>
 
         <Select
-          value={selectedFilters.status || ""}
+          value={selectedFilters.status || "all"}
           onValueChange={(value) => 
             onFilterChange({ 
               ...selectedFilters, 
-              status: value || undefined 
+              status: value === "all" ? undefined : value as TaskStatus
             })
           }
         >
@@ -82,7 +82,7 @@ export const TaskFilters = ({
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Status</SelectItem>
+            <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="todo">To Do</SelectItem>
             <SelectItem value="doing">In Progress</SelectItem>
             <SelectItem value="review">Review</SelectItem>
@@ -91,11 +91,11 @@ export const TaskFilters = ({
         </Select>
 
         <Select
-          value={selectedFilters.type || ""}
+          value={selectedFilters.type || "all"}
           onValueChange={(value) => 
             onFilterChange({ 
               ...selectedFilters, 
-              type: value || undefined 
+              type: value === "all" ? undefined : value as TaskType
             })
           }
         >
@@ -103,7 +103,7 @@ export const TaskFilters = ({
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Types</SelectItem>
+            <SelectItem value="all">All Types</SelectItem>
             <SelectItem value="code">Code</SelectItem>
             <SelectItem value="review">Review</SelectItem>
             <SelectItem value="prompt">Prompt</SelectItem>
@@ -112,11 +112,11 @@ export const TaskFilters = ({
         </Select>
 
         <Select
-          value={selectedFilters.priority || ""}
+          value={selectedFilters.priority || "all"}
           onValueChange={(value) => 
             onFilterChange({ 
               ...selectedFilters, 
-              priority: value || undefined 
+              priority: value === "all" ? undefined : value as Priority
             })
           }
         >
@@ -124,7 +124,7 @@ export const TaskFilters = ({
             <SelectValue placeholder="Priority" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Priority</SelectItem>
+            <SelectItem value="all">All Priority</SelectItem>
             <SelectItem value="low">Low</SelectItem>
             <SelectItem value="med">Medium</SelectItem>
             <SelectItem value="high">High</SelectItem>

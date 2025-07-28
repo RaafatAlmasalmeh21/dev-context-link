@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Clock, Brain, Target } from "lucide-react";
-import { Task } from "@/types";
+import { Task, TaskStatus } from "@/types";
 import { useAnalytics } from "@/hooks/useAnalytics";
 
 interface TaskDialogProps {
@@ -20,7 +20,7 @@ interface TaskDialogProps {
 export const TaskDialog = ({ task, open, onOpenChange, onSave, initialStatus = "todo" }: TaskDialogProps) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [status, setStatus] = useState<"todo" | "in-progress" | "done">(initialStatus);
+  const [status, setStatus] = useState<TaskStatus>(initialStatus);
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
   const [type, setType] = useState<"feature" | "bug" | "improvement">("feature");
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
@@ -33,7 +33,7 @@ export const TaskDialog = ({ task, open, onOpenChange, onSave, initialStatus = "
     if (task) {
       setTitle(task.title);
       setDescription(task.description || "");
-      setStatus(task.status as "todo" | "in-progress" | "done");
+      setStatus(task.status);
       setPriority(task.priority as "low" | "medium" | "high");
       setType(task.type as "feature" | "bug" | "improvement");
       setDueDate(task.due_date ? new Date(task.due_date) : undefined);
@@ -175,7 +175,8 @@ export const TaskDialog = ({ task, open, onOpenChange, onSave, initialStatus = "
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todo">To Do</SelectItem>
-                  <SelectItem value="in-progress">In Progress</SelectItem>
+                  <SelectItem value="doing">In Progress</SelectItem>
+                  <SelectItem value="review">Review</SelectItem>
                   <SelectItem value="done">Done</SelectItem>
                 </SelectContent>
               </Select>
