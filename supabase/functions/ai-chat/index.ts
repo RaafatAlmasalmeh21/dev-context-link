@@ -41,7 +41,7 @@ serve(async (req) => {
 
     // Build context-aware prompt
     let fullPrompt = prompt;
-    let contextData = context || {};
+    const contextData = context || {};
 
     // If linked to a task, get task context
     if (taskId) {
