@@ -106,13 +106,22 @@ export const usePrompts = () => {
 
   const useTemplate = async (templateId: string) => {
     try {
-      // Increment usage count
-      const { error } = await supabase.rpc('increment_template_usage', {
-        template_id: templateId
-      });
-
-      if (error) throw error;
-      await fetchTemplates();
+      // Get current template and increment usage count
+      const { data: template } = await supabase
+        .from('prompt_templates')
+        .select('usage_count')
+        .eq('id', templateId)
+        .single();
+        
+      if (template) {
+        const { error } = await supabase
+          .from('prompt_templates')
+          .update({ usage_count: template.usage_count + 1 })
+          .eq('id', templateId);
+          
+        if (error) throw error;
+        await fetchTemplates();
+      }
     } catch (error) {
       console.error('Error updating template usage:', error);
     }

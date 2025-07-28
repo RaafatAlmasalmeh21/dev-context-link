@@ -339,45 +339,7 @@ export const Dashboard = () => {
   );
 
   const renderPromptsView = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Saved Prompts</h2>
-        <Button onClick={() => setActiveView('today')}>
-          Back to Today
-        </Button>
-      </div>
-      
-      <div className="grid gap-4">
-        {prompts.map((prompt) => (
-          <Card key={prompt.id} className="p-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary">
-                  {prompt.tags?.[0] || 'General'}
-                </Badge>
-                <span className="text-sm text-muted-foreground">
-                  {format(new Date(prompt.created_at), 'MMM d, yyyy')}
-                </span>
-              </div>
-              <p className="font-medium">{prompt.prompt_text}</p>
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {prompt.response_snippet}
-              </p>
-            </div>
-          </Card>
-        ))}
-        
-        {prompts.length === 0 && (
-          <Card className="p-8 text-center">
-            <Zap className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-medium mb-2">No prompts saved yet</h3>
-            <p className="text-muted-foreground">
-              Save prompts from the Today view to see them here.
-            </p>
-          </Card>
-        )}
-      </div>
-    </div>
+    <EnhancedPromptView />
   );
 
   const renderReviewsView = () => {
