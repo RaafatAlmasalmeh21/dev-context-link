@@ -7,53 +7,69 @@ import { ReviewDialog } from "@/components/reviews/ReviewDialog";
 import { QuickPrompt } from "@/components/prompts/QuickPrompt";
 import { EnhancedPromptView } from "@/components/prompts/EnhancedPromptView";
 import { SmartAnalyticsDashboard } from "@/components/analytics/SmartAnalyticsDashboard";
+import { AuthDialog } from "@/components/auth/AuthDialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Task, TaskStatus, Prompt, Review, ReviewStatus } from "@/types";
+import { Task, TaskStatus, TaskType, Priority, Prompt, Review, ReviewStatus } from "@/types";
 import { Plus, Calendar, Target, Zap, GitPullRequest, Code2, FolderOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
 export const Dashboard = () => {
+  const { user, loading } = useAuth();
   const { toast } = useToast();
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
+
+  // Check auth status and fetch tasks
+  useEffect(() => {
+    if (!loading && !user) {
+      setAuthDialogOpen(true);
+      return;
+    }
+
+    if (user) {
+      fetchTasks();
+    }
+  }, [user, loading]);
+
+  const fetchTasks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      if (data) {
+        const typedTasks = data.map(task => ({
+          ...task,
+          type: task.type as TaskType,
+          status: task.status as TaskStatus,
+          priority: task.priority as Priority,
+          due_date: task.due_date ? new Date(task.due_date) : undefined,
+          created_at: new Date(task.created_at),
+          updated_at: new Date(task.updated_at),
+        }));
+        setTasks(typedTasks);
+        console.log('Fetched tasks:', typedTasks);
+      }
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch tasks",
+        variant: "destructive",
+      });
+    }
+  };
   const [activeView, setActiveView] = useState('today');
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: '1',
-      title: 'Implement user authentication',
-      description: 'Set up login/logout functionality with JWT tokens',
-      type: 'code',
-      status: 'doing',
-      priority: 'high',
-      due_date: new Date('2025-01-28'),
-      created_at: new Date(),
-      updated_at: new Date(),
-    },
-    {
-      id: '2',
-      title: 'Review PR #123',
-      description: 'Check the new dashboard component implementation',
-      type: 'review',
-      status: 'todo',
-      priority: 'med',
-      created_at: new Date(),
-      updated_at: new Date(),
-    },
-    {
-      id: '3',
-      title: 'Write API documentation',
-      description: 'Document all endpoints for the user management API',
-      type: 'doc',
-      status: 'review',
-      priority: 'med',
-      created_at: new Date(),
-      updated_at: new Date(),
-    },
-  ]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -76,35 +92,74 @@ export const Dashboard = () => {
     }
   }, []);
 
-  const handleTaskSave = (taskData: Partial<Task>) => {
-    if (taskData.id) {
-      // Update existing task
-      setTasks(prev => prev.map(t => 
-        t.id === taskData.id 
-          ? { ...t, ...taskData, updated_at: new Date() }
-          : t
-      ));
-      toast({
-        title: "Task updated",
-        description: "Your task has been successfully updated.",
-      });
-    } else {
-      // Create new task
-      const newTask: Task = {
-        id: Date.now().toString(),
+  const handleTaskSave = async (taskData: Partial<Task>) => {
+    if (!user) return;
+
+    try {
+      const dbTaskData = {
         title: taskData.title!,
-        description: taskData.description!,
-        type: taskData.type!,
+        description: taskData.description || '',
         status: taskData.status!,
         priority: taskData.priority!,
-        due_date: taskData.due_date,
-        created_at: new Date(),
-        updated_at: new Date(),
+        type: taskData.type!,
+        due_date: taskData.due_date?.toISOString(),
+        estimated_hours: taskData.estimated_hours,
+        actual_hours: taskData.actual_hours,
+        user_id: user.id,
       };
-      setTasks(prev => [...prev, newTask]);
+
+      if (taskData.id && tasks.find(t => t.id === taskData.id)) {
+        // Update existing task
+        const { error } = await supabase
+          .from('tasks')
+          .update(dbTaskData)
+          .eq('id', taskData.id);
+
+        if (error) throw error;
+        
+        setTasks(prev => prev.map(t => 
+          t.id === taskData.id 
+            ? { ...t, ...taskData, updated_at: new Date() }
+            : t
+        ));
+        
+        toast({
+          title: "Task updated",
+          description: "Your task has been successfully updated.",
+        });
+      } else {
+        // Create new task
+        const { data, error } = await supabase
+          .from('tasks')
+          .insert(dbTaskData)
+          .select()
+          .single();
+
+        if (error) throw error;
+        
+        if (data) {
+          const newTask = {
+            ...data,
+            type: data.type as TaskType,
+            status: data.status as TaskStatus,
+            priority: data.priority as Priority,
+            due_date: data.due_date ? new Date(data.due_date) : undefined,
+            created_at: new Date(data.created_at),
+            updated_at: new Date(data.updated_at),
+          };
+          setTasks(prev => [...prev, newTask]);
+          toast({
+            title: "Task created",
+            description: "Your new task has been added to the board.",
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error saving task:', error);
       toast({
-        title: "Task created",
-        description: "Your new task has been added to the board.",
+        title: "Error",
+        description: "Failed to save task",
+        variant: "destructive",
       });
     }
   };
@@ -641,6 +696,11 @@ export const Dashboard = () => {
         </main>
       </div>
       
+      <AuthDialog 
+        open={authDialogOpen}
+        onOpenChange={setAuthDialogOpen}
+      />
+
       <TaskDialog
         open={taskDialogOpen}
         onOpenChange={setTaskDialogOpen}

@@ -17,13 +17,17 @@ export interface Project {
 export interface Task {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   type: TaskType;
   status: TaskStatus;
   priority: Priority;
   due_date?: Date;
   project_id?: string;
   project?: Project;
+  estimated_hours?: number;
+  actual_hours?: number;
+  user_id?: string;
+  tags?: string[];
   created_at: Date;
   updated_at: Date;
 }
