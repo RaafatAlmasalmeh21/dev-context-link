@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Task, TaskStatus, TaskType, Priority, Prompt, Review, ReviewStatus, Project, Snippet } from "@/types";
-import { Plus, Calendar, Target, Zap, GitPullRequest, Code2, FolderOpen, Search, Filter } from "lucide-react";
+import { Plus, Calendar, Target, Zap, GitPullRequest, Code2, FolderOpen, Search, Filter, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -832,17 +832,23 @@ export const Dashboard = () => {
   );
 
   const renderCodeSnippetsView = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Code Snippets</h2>
-          <p className="text-muted-foreground">Save and organize your code snippets</p>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Code Snippets</h2>
+            <p className="text-muted-foreground">Save and organize your code snippets</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => window.location.href = '/snippets'}>
+              <ExternalLink className="h-4 w-4 mr-2" />
+              View All
+            </Button>
+            <Button onClick={() => setSnippetDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Snippet
+            </Button>
+          </div>
         </div>
-        <Button onClick={() => setSnippetDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Snippet
-        </Button>
-      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {snippets.map((snippet) => (
