@@ -36,8 +36,7 @@ export const useAI = () => {
           prompt,
           taskId,
           templateId,
-          context,
-          userId: user.id
+          context
         }
       });
 

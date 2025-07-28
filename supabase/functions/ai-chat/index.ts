@@ -17,16 +17,27 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, taskId, templateId, context, userId } = await req.json();
+    const { prompt, taskId, templateId, context } = await req.json();
 
-    if (!prompt || !userId) {
-      throw new Error('Prompt and userId are required');
+    if (!prompt) {
+      throw new Error('Prompt is required');
     }
 
-    console.log('Processing AI chat request:', { prompt: prompt.substring(0, 100), taskId, userId });
+    console.log('Processing AI chat request:', { prompt: prompt.substring(0, 100), taskId });
 
-    // Initialize Supabase client
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Initialize Supabase client with the incoming JWT for RLS
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      global: {
+        headers: {
+          Authorization: req.headers.get('Authorization')!
+        }
+      }
+    });
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
 
     // Build context-aware prompt
     let fullPrompt = prompt;
@@ -38,7 +49,7 @@ serve(async (req) => {
         .from('tasks')
         .select('*')
         .eq('id', taskId)
-        .eq('user_id', userId)
+        .eq('user_id', user.id)
         .single();
 
       if (task) {
@@ -87,7 +98,7 @@ serve(async (req) => {
     const { data: savedPrompt, error: saveError } = await supabase
       .from('prompts')
       .insert({
-        user_id: userId,
+        user_id: user.id,
         title: prompt.substring(0, 100) + (prompt.length > 100 ? '...' : ''),
         prompt_text: prompt,
         response_text: responseText,
