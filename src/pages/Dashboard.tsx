@@ -13,6 +13,7 @@ import { QuickPrompt } from "@/components/prompts/QuickPrompt";
 import { EnhancedPromptView } from "@/components/prompts/EnhancedPromptView";
 import { SmartAnalyticsDashboard } from "@/components/analytics/SmartAnalyticsDashboard";
 import { AuthDialog } from "@/components/auth/AuthDialog";
+import { GitHubRepoImport } from "@/components/github/GitHubRepoImport";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +46,7 @@ export const Dashboard = () => {
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [snippetDialogOpen, setSnippetDialogOpen] = useState(false);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [githubImportOpen, setGithubImportOpen] = useState(false);
   
   // Editing states
   const [editingTask, setEditingTask] = useState<Task | undefined>();
@@ -517,6 +519,82 @@ export const Dashboard = () => {
     }
   };
 
+  const handleGithubImport = async (importData: { files: any[]; issues: any[]; metadata: any }) => {
+    try {
+      if (!user) return;
+
+      // Create project from metadata
+      const projectData = {
+        name: importData.metadata.name,
+        description: importData.metadata.description || "",
+        repo_url: importData.metadata.clone_url,
+        status: "active" as const,
+        user_id: user.id,
+      };
+
+      const { data: newProject, error: projectError } = await supabase
+        .from('projects')
+        .insert(projectData)
+        .select()
+        .single();
+
+      if (projectError) throw projectError;
+
+      // Import files as code snippets
+      const snippetPromises = importData.files.map(async (file: any) => {
+        const snippetData = {
+          file_path: file.path,
+          code_text: file.content,
+          commit_sha: file.sha,
+          user_id: user.id,
+        };
+
+        return supabase.from('code_snippets').insert(snippetData);
+      });
+
+      await Promise.all(snippetPromises);
+
+      // Import issues as tasks
+      const taskPromises = importData.issues
+        .filter((issue: any) => !issue.pull_request) // Filter out PRs
+        .map(async (issue: any) => {
+          const taskData = {
+            title: issue.title,
+            description: issue.body || "",
+            status: issue.state === "closed" ? "done" : "todo",
+            priority: issue.labels.some((l: any) => l.name.includes("high")) ? "high" : 
+                     issue.labels.some((l: any) => l.name.includes("low")) ? "low" : "med",
+            type: issue.labels.some((l: any) => l.name.includes("bug")) ? "code" : "prompt",
+            project_id: newProject.id,
+            user_id: user.id,
+            tags: issue.labels.map((l: any) => l.name),
+          };
+
+          return supabase.from('tasks').insert(taskData);
+        });
+
+      await Promise.all(taskPromises);
+
+      // Refresh data
+      await fetchAllData();
+
+      setGithubImportOpen(false);
+
+      toast({
+        title: "Repository Imported Successfully",
+        description: `Created project "${newProject.name}" with ${importData.files.length} files and ${importData.issues.length} issues`,
+      });
+
+    } catch (error: any) {
+      console.error('Import error:', error);
+      toast({
+        title: "Import Failed",
+        description: error.message || "Failed to import repository",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleGithubDisconnect = () => {
     localStorage.removeItem('github_token');
     setGithubToken('');
@@ -699,17 +777,23 @@ export const Dashboard = () => {
   );
 
   const renderProjectsView = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Projects</h2>
-          <p className="text-muted-foreground">Manage your projects and track progress</p>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Projects</h2>
+            <p className="text-muted-foreground">Manage your projects and track progress</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setGithubImportOpen(true)}>
+              <GitPullRequest className="h-4 w-4 mr-2" />
+              Import from GitHub
+            </Button>
+            <Button onClick={() => setProjectDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Project
+            </Button>
+          </div>
         </div>
-        <Button onClick={() => setProjectDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Project
-        </Button>
-      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {projects.map((project) => {
@@ -955,6 +1039,13 @@ export const Dashboard = () => {
         onOpenChange={setReviewDialogOpen}
         onSave={handleReviewSave}
         tasks={tasks}
+      />
+
+      <GitHubRepoImport
+        open={githubImportOpen}
+        onOpenChange={setGithubImportOpen}
+        onImportComplete={handleGithubImport}
+        githubToken={githubToken}
       />
 
       <AuthDialog
