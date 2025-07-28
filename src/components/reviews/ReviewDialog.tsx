@@ -39,7 +39,7 @@ export const ReviewDialog = ({
     notes: review?.notes || '',
     status: review?.status || 'open' as ReviewStatus,
     reviewer: review?.reviewer || '',
-    task_id: review?.task_id || '',
+    task_id: review?.task_id || 'none',
   });
 
   // Reset form when review or dialog state changes
@@ -50,7 +50,7 @@ export const ReviewDialog = ({
         notes: review?.notes || '',
         status: review?.status || 'open' as ReviewStatus,
         reviewer: review?.reviewer || '',
-        task_id: review?.task_id || '',
+        task_id: review?.task_id || 'none',
       });
     }
   }, [review, open]);
@@ -62,6 +62,7 @@ export const ReviewDialog = ({
     
     const reviewData: Partial<Review> = {
       ...formData,
+      task_id: formData.task_id === 'none' ? undefined : formData.task_id,
       id: review?.id,
     };
     
@@ -134,7 +135,7 @@ export const ReviewDialog = ({
                 <SelectValue placeholder="Select a task..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No task</SelectItem>
+                <SelectItem value="none">No task</SelectItem>
                 {tasks.map((task) => (
                   <SelectItem key={task.id} value={task.id}>
                     {task.title}
