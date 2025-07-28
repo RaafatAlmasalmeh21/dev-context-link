@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Task, TaskStatus, Prompt } from "@/types";
-import { Plus, Calendar, Target, Zap } from "lucide-react";
+import { Plus, Calendar, Target, Zap, GitPullRequest, Code2, FolderOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export const Dashboard = () => {
@@ -261,6 +261,60 @@ export const Dashboard = () => {
     </div>
   );
 
+  const renderReviewsView = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Code Reviews</h2>
+      </div>
+      
+      <Card>
+        <CardContent className="p-8 text-center">
+          <GitPullRequest className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <h3 className="text-lg font-medium mb-2">No reviews yet</h3>
+          <p className="text-muted-foreground">
+            Connect your GitHub repository to track pull request reviews here.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderCodeView = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Code Snippets</h2>
+      </div>
+      
+      <Card>
+        <CardContent className="p-8 text-center">
+          <Code2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <h3 className="text-lg font-medium mb-2">No code snippets yet</h3>
+          <p className="text-muted-foreground">
+            Save important code snippets and link them to your tasks.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderProjectsView = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Projects</h2>
+      </div>
+      
+      <Card>
+        <CardContent className="p-8 text-center">
+          <FolderOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <h3 className="text-lg font-medium mb-2">No projects yet</h3>
+          <p className="text-muted-foreground">
+            Create and organize your development projects here.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
   const renderContent = () => {
     switch (activeView) {
       case 'today':
@@ -269,6 +323,12 @@ export const Dashboard = () => {
         return renderAllTasksView();
       case 'prompts':
         return renderPromptsView();
+      case 'reviews':
+        return renderReviewsView();
+      case 'code':
+        return renderCodeView();
+      case 'projects':
+        return renderProjectsView();
       default:
         return renderTodayView();
     }
