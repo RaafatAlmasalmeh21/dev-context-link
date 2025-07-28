@@ -6,6 +6,7 @@ import { TaskDialog } from "@/components/tasks/TaskDialog";
 import { ReviewDialog } from "@/components/reviews/ReviewDialog";
 import { QuickPrompt } from "@/components/prompts/QuickPrompt";
 import { EnhancedPromptView } from "@/components/prompts/EnhancedPromptView";
+import { SmartAnalyticsDashboard } from "@/components/analytics/SmartAnalyticsDashboard";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,7 +61,7 @@ export const Dashboard = () => {
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>();
   const [editingReview, setEditingReview] = useState<Review | undefined>();
-  const [initialStatus, setInitialStatus] = useState<TaskStatus>('todo');
+  const [initialStatus, setInitialStatus] = useState<"todo" | "in-progress" | "done">('todo');
   const [selectedTask, setSelectedTask] = useState<Task | undefined>();
   const [githubToken, setGithubToken] = useState<string>('');
   const [githubConnected, setGithubConnected] = useState(false);
@@ -108,7 +109,7 @@ export const Dashboard = () => {
     }
   };
 
-  const handleAddTask = (status: TaskStatus) => {
+  const handleAddTask = (status: "todo" | "in-progress" | "done") => {
     setEditingTask(undefined);
     setInitialStatus(status);
     setTaskDialogOpen(true);
@@ -616,6 +617,8 @@ export const Dashboard = () => {
         return renderPromptsView();
       case 'reviews':
         return renderReviewsView();
+      case 'analytics':
+        return <SmartAnalyticsDashboard />;
       case 'code':
         return renderCodeView();
       case 'projects':

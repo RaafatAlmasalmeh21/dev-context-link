@@ -92,6 +92,36 @@ export type Database = {
         }
         Relationships: []
       }
+      productivity_insights: {
+        Row: {
+          confidence_score: number | null
+          expires_at: string | null
+          generated_at: string
+          id: string
+          insight_data: Json
+          insight_type: string
+          user_id: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          expires_at?: string | null
+          generated_at?: string
+          id?: string
+          insight_data: Json
+          insight_type: string
+          user_id: string
+        }
+        Update: {
+          confidence_score?: number | null
+          expires_at?: string | null
+          generated_at?: string
+          id?: string
+          insight_data?: Json
+          insight_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -212,6 +242,59 @@ export type Database = {
         }
         Relationships: []
       }
+      task_analytics: {
+        Row: {
+          actual_hours: number | null
+          completion_date: string | null
+          complexity_score: number | null
+          created_at: string
+          efficiency_score: number | null
+          estimated_hours: number | null
+          focus_time_minutes: number | null
+          id: string
+          interruptions_count: number | null
+          task_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actual_hours?: number | null
+          completion_date?: string | null
+          complexity_score?: number | null
+          created_at?: string
+          efficiency_score?: number | null
+          estimated_hours?: number | null
+          focus_time_minutes?: number | null
+          id?: string
+          interruptions_count?: number | null
+          task_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actual_hours?: number | null
+          completion_date?: string | null
+          complexity_score?: number | null
+          created_at?: string
+          efficiency_score?: number | null
+          estimated_hours?: number | null
+          focus_time_minutes?: number | null
+          id?: string
+          interruptions_count?: number | null
+          task_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_task_analytics_task"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           actual_hours: number | null
@@ -258,6 +341,45 @@ export type Database = {
           tags?: string[] | null
           title?: string
           type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_goals: {
+        Row: {
+          created_at: string
+          current_value: number | null
+          goal_type: string
+          id: string
+          period_end: string
+          period_start: string
+          status: string | null
+          target_value: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_value?: number | null
+          goal_type: string
+          id?: string
+          period_end: string
+          period_start: string
+          status?: string | null
+          target_value: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_value?: number | null
+          goal_type?: string
+          id?: string
+          period_end?: string
+          period_start?: string
+          status?: string | null
+          target_value?: number
           updated_at?: string
           user_id?: string
         }

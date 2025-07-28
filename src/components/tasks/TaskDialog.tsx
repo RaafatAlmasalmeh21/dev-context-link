@@ -1,72 +1,103 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Task, TaskStatus, TaskType, Priority } from "@/types";
-import { useState, useEffect } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Clock, Brain, Target } from "lucide-react";
+import { Task } from "@/types";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 interface TaskDialogProps {
+  task?: Task;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  task?: Task;
-  initialStatus?: TaskStatus;
-  onSave: (task: Partial<Task>) => void;
+  onSave: (task: Task) => void;
+  initialStatus?: "todo" | "in-progress" | "done";
 }
 
-export const TaskDialog = ({ 
-  open, 
-  onOpenChange, 
-  task, 
-  initialStatus = 'todo',
-  onSave 
-}: TaskDialogProps) => {
-  const [formData, setFormData] = useState({
-    title: task?.title || '',
-    description: task?.description || '',
-    type: task?.type || 'code' as TaskType,
-    status: task?.status || initialStatus,
-    priority: task?.priority || 'med' as Priority,
-    due_date: task?.due_date ? new Date(task.due_date).toISOString().split('T')[0] : '',
-  });
+export const TaskDialog = ({ task, open, onOpenChange, onSave, initialStatus = "todo" }: TaskDialogProps) => {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [status, setStatus] = useState<"todo" | "in-progress" | "done">(initialStatus);
+  const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
+  const [type, setType] = useState<"feature" | "bug" | "improvement">("feature");
+  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+  const [estimatedHours, setEstimatedHours] = useState<number | undefined>(undefined);
+  const [actualHours, setActualHours] = useState<number | undefined>(undefined);
+  
+  const { getTaskEstimation, recordTaskCompletion, isLoading } = useAnalytics();
 
-  // Reset form when task or dialog state changes
   useEffect(() => {
-    if (open) {
-      setFormData({
-        title: task?.title || '',
-        description: task?.description || '',
-        type: task?.type || 'code' as TaskType,
-        status: task?.status || initialStatus,
-        priority: task?.priority || 'med' as Priority,
-        due_date: task?.due_date ? new Date(task.due_date).toISOString().split('T')[0] : '',
-      });
+    if (task) {
+      setTitle(task.title);
+      setDescription(task.description || "");
+      setStatus(task.status as "todo" | "in-progress" | "done");
+      setPriority(task.priority as "low" | "medium" | "high");
+      setType(task.type as "feature" | "bug" | "improvement");
+      setDueDate(task.due_date ? new Date(task.due_date) : undefined);
+      setEstimatedHours((task as any).estimated_hours);
+      setActualHours((task as any).actual_hours);
+    } else {
+      setTitle("");
+      setDescription("");
+      setStatus(initialStatus);
+      setPriority("medium");
+      setType("feature");
+      setDueDate(undefined);
+      setEstimatedHours(undefined);
+      setActualHours(undefined);
     }
   }, [task, initialStatus, open]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGetTimeEstimate = async () => {
+    if (!title.trim()) return;
     
-    const taskData: Partial<Task> = {
-      ...formData,
-      due_date: formData.due_date ? new Date(formData.due_date) : undefined,
+    const taskData = { title, description, type, priority };
+    const estimation = await getTaskEstimation(taskData, 'time_estimate');
+    
+    if (estimation?.estimation?.estimated_hours) {
+      setEstimatedHours(estimation.estimation.estimated_hours);
+    }
+  };
+
+  const handleGetSuggestions = async () => {
+    if (!title.trim()) return;
+    
+    const taskData = { title, description, type, priority };
+    const suggestions = await getTaskEstimation(taskData, 'category_suggestion');
+    
+    if (suggestions?.estimation) {
+      if (suggestions.estimation.suggested_type) {
+        setType(suggestions.estimation.suggested_type);
+      }
+      if (suggestions.estimation.suggested_priority) {
+        setPriority(suggestions.estimation.suggested_priority);
+      }
+    }
+  };
+
+  const handleSave = async () => {
+    const taskData: Task = {
+      id: task?.id || crypto.randomUUID(),
+      title,
+      description,
+      status: status as any,
+      priority: priority as any,
+      type: type as any,
+      due_date: dueDate,
+      created_at: task?.created_at || new Date(),
+      updated_at: new Date(),
+      ...((estimatedHours !== undefined || actualHours !== undefined) && {
+        estimated_hours: estimatedHours,
+        actual_hours: actualHours
+      })
     };
 
-    if (task) {
-      taskData.id = task.id;
+    // If task is being marked as done and we have actual hours, record completion
+    if (status === 'done' && actualHours && (!task || (task as any).status !== 'done')) {
+      await recordTaskCompletion(taskData.id, actualHours, estimatedHours);
     }
 
     onSave(taskData);
@@ -75,23 +106,20 @@ export const TaskDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>
             {task ? 'Edit Task' : 'Create New Task'}
           </DialogTitle>
-          <DialogDescription>
-            {task ? 'Update the task details below.' : 'Fill in the details to create a new task.'}
-          </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="title">Title</Label>
             <Input
               id="title"
-              value={formData.title}
-              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               placeholder="Task title..."
               required
             />
@@ -101,8 +129,8 @@ export const TaskDialog = ({
             <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
-              value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
               placeholder="Task description..."
               rows={3}
             />
@@ -111,34 +139,27 @@ export const TaskDialog = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="type">Type</Label>
-              <Select 
-                value={formData.type} 
-                onValueChange={(value: TaskType) => setFormData(prev => ({ ...prev, type: value }))}
-              >
+              <Select value={type} onValueChange={(value) => setType(value as any)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="code">Code</SelectItem>
-                  <SelectItem value="review">Review</SelectItem>
-                  <SelectItem value="prompt">Prompt</SelectItem>
-                  <SelectItem value="doc">Documentation</SelectItem>
+                  <SelectItem value="feature">Feature</SelectItem>
+                  <SelectItem value="bug">Bug</SelectItem>
+                  <SelectItem value="improvement">Improvement</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="priority">Priority</Label>
-              <Select 
-                value={formData.priority} 
-                onValueChange={(value: Priority) => setFormData(prev => ({ ...prev, priority: value }))}
-              >
+              <Select value={priority} onValueChange={(value) => setPriority(value as any)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="med">Medium</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
                   <SelectItem value="high">High</SelectItem>
                 </SelectContent>
               </Select>
@@ -148,17 +169,13 @@ export const TaskDialog = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
-              <Select 
-                value={formData.status} 
-                onValueChange={(value: TaskStatus) => setFormData(prev => ({ ...prev, status: value }))}
-              >
+              <Select value={status} onValueChange={(value) => setStatus(value as any)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todo">To Do</SelectItem>
-                  <SelectItem value="doing">In Progress</SelectItem>
-                  <SelectItem value="review">Review</SelectItem>
+                  <SelectItem value="in-progress">In Progress</SelectItem>
                   <SelectItem value="done">Done</SelectItem>
                 </SelectContent>
               </Select>
@@ -169,10 +186,62 @@ export const TaskDialog = ({
               <Input
                 id="due_date"
                 type="date"
-                value={formData.due_date}
-                onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
+                value={dueDate ? dueDate.toISOString().split('T')[0] : ''}
+                onChange={(e) => setDueDate(e.target.value ? new Date(e.target.value) : undefined)}
               />
             </div>
+          </div>
+
+          {/* AI-Enhanced Fields */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="estimated-hours">Estimated Hours</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="estimated-hours"
+                  type="number"
+                  step="0.5"
+                  value={estimatedHours || ''}
+                  onChange={(e) => setEstimatedHours(parseFloat(e.target.value) || undefined)}
+                  placeholder="0.0"
+                />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleGetTimeEstimate}
+                  disabled={isLoading || !title.trim()}
+                >
+                  <Clock className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="actual-hours">Actual Hours</Label>
+              <Input
+                id="actual-hours"
+                type="number"
+                step="0.5"
+                value={actualHours || ''}
+                onChange={(e) => setActualHours(parseFloat(e.target.value) || undefined)}
+                placeholder="0.0"
+              />
+            </div>
+          </div>
+
+          {/* AI Suggestions */}
+          <div className="flex gap-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={handleGetSuggestions}
+              disabled={isLoading || !title.trim()}
+              className="flex-1"
+            >
+              <Brain className="h-4 w-4 mr-2" />
+              Get AI Suggestions
+            </Button>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
@@ -183,11 +252,11 @@ export const TaskDialog = ({
             >
               Cancel
             </Button>
-            <Button type="submit">
+            <Button onClick={handleSave} disabled={!title.trim()}>
               {task ? 'Update' : 'Create'} Task
             </Button>
           </div>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
