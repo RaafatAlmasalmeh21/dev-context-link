@@ -17,6 +17,13 @@ serve(async (req) => {
   }
 
   try {
+    if (!openAIApiKey) {
+      console.error('Missing OPENAI_API_KEY environment variable');
+      return new Response(JSON.stringify({ error: 'Service misconfigured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     const { userId, timeRange = '30_days' } = await req.json();
 
     if (!userId) {
