@@ -77,7 +77,7 @@ export const Dashboard = () => {
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>();
   const [editingReview, setEditingReview] = useState<Review | undefined>();
-  const [initialStatus, setInitialStatus] = useState<"todo" | "in-progress" | "done">('todo');
+  const [initialStatus, setInitialStatus] = useState<TaskStatus>('todo');
   const [selectedTask, setSelectedTask] = useState<Task | undefined>();
   const [githubToken, setGithubToken] = useState<string>('');
   const [githubConnected, setGithubConnected] = useState(false);
@@ -164,11 +164,6 @@ export const Dashboard = () => {
     }
   };
 
-  const handleAddTask = (status: "todo" | "in-progress" | "done") => {
-    setEditingTask(undefined);
-    setInitialStatus(status);
-    setTaskDialogOpen(true);
-  };
 
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
@@ -191,6 +186,43 @@ export const Dashboard = () => {
       title: "Prompt saved",
       description: "Your prompt and response have been saved.",
     });
+  };
+
+  const handleTaskStatusChange = async (taskId: string, newStatus: TaskStatus) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status: newStatus })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      setTasks(prev => prev.map(task => 
+        task.id === taskId 
+          ? { ...task, status: newStatus, updated_at: new Date() }
+          : task
+      ));
+
+      toast({
+        title: "Task updated",
+        description: "Task status has been updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update task status",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddTask = (status: TaskStatus) => {
+    setInitialStatus(status);
+    setEditingTask(undefined);
+    setTaskDialogOpen(true);
   };
 
   const handleGithubConnect = async () => {
@@ -363,8 +395,8 @@ export const Dashboard = () => {
         <div className="lg:col-span-2">
           <KanbanBoard 
             tasks={todayTasks}
-            onTaskClick={handleTaskClick}
             onAddTask={handleAddTask}
+            onTaskStatusChange={handleTaskStatusChange}
           />
         </div>
         <div>
@@ -386,11 +418,12 @@ export const Dashboard = () => {
           Add Task
         </Button>
       </div>
-      <KanbanBoard 
-        tasks={tasks}
-        onTaskClick={handleTaskClick}
-        onAddTask={handleAddTask}
-      />
+        <KanbanBoard 
+          tasks={tasks} 
+          onTaskClick={handleTaskClick}
+          onAddTask={handleAddTask}
+          onTaskStatusChange={handleTaskStatusChange}
+        />
     </div>
   );
 
@@ -706,7 +739,7 @@ export const Dashboard = () => {
         onOpenChange={setTaskDialogOpen}
         onSave={handleTaskSave}
         task={editingTask}
-        initialStatus={initialStatus}
+        initialStatus={initialStatus as "todo" | "done" | "in-progress"}
       />
       
       <ReviewDialog
