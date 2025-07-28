@@ -1,4 +1,8 @@
-# Welcome to your Lovable project
+# Developer Productivity Hub
+
+Developer Productivity Hub helps you manage your work in a single place. It
+combines task tracking, AI powered prompts and analytics so you can plan,
+execute and review your development tasks efficiently.
 
 ## Project info
 
@@ -20,6 +24,22 @@ If you want to work locally using your own IDE, you can clone this repo and push
 
 The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
+## Prerequisites
+
+- [Node.js](https://nodejs.org/) 18 or newer
+- [Supabase CLI](https://supabase.com/docs/guides/cli) for running the local database
+- An OpenAI API key
+
+Create a `.env` file based on `.env.example` and provide the following variables:
+
+```bash
+OPENAI_API_KEY=<your-openai-api-key>
+SUPABASE_URL=http://localhost:54321
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+```
+
+## Running locally
+
 Follow these steps:
 
 ```sh
@@ -32,7 +52,10 @@ cd <YOUR_PROJECT_NAME>
 # Step 3: Install the necessary dependencies.
 npm i
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Start Supabase locally (reads credentials from `.env`).
+npx supabase start
+
+# Step 5: Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
 
