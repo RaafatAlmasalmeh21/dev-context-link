@@ -14,6 +14,65 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_code_reviews: {
+        Row: {
+          ai_model: string | null
+          code_quality_issues: Json | null
+          created_at: string
+          id: string
+          overall_score: number | null
+          performance_issues: Json | null
+          processing_time_ms: number | null
+          pull_request_id: string
+          review_data: Json | null
+          security_issues: Json | null
+          status: string
+          suggestions: Json | null
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          ai_model?: string | null
+          code_quality_issues?: Json | null
+          created_at?: string
+          id?: string
+          overall_score?: number | null
+          performance_issues?: Json | null
+          processing_time_ms?: number | null
+          pull_request_id: string
+          review_data?: Json | null
+          security_issues?: Json | null
+          status?: string
+          suggestions?: Json | null
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ai_model?: string | null
+          code_quality_issues?: Json | null
+          created_at?: string
+          id?: string
+          overall_score?: number | null
+          performance_issues?: Json | null
+          processing_time_ms?: number | null
+          pull_request_id?: string
+          review_data?: Json | null
+          security_issues?: Json | null
+          status?: string
+          suggestions?: Json | null
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_code_reviews_pull_request_id_fkey"
+            columns: ["pull_request_id"]
+            isOneToOne: false
+            referencedRelation: "pull_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_task_suggestions: {
         Row: {
           applied: boolean | null
@@ -89,6 +148,113 @@ export type Database = {
           technical_indicators?: Json | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      code_review_comments: {
+        Row: {
+          ai_review_id: string
+          code_snippet: string | null
+          comment_type: string
+          created_at: string
+          description: string
+          file_path: string
+          id: string
+          line_number: number | null
+          severity: string
+          suggested_fix: string | null
+          title: string
+        }
+        Insert: {
+          ai_review_id: string
+          code_snippet?: string | null
+          comment_type: string
+          created_at?: string
+          description: string
+          file_path: string
+          id?: string
+          line_number?: number | null
+          severity?: string
+          suggested_fix?: string | null
+          title: string
+        }
+        Update: {
+          ai_review_id?: string
+          code_snippet?: string | null
+          comment_type?: string
+          created_at?: string
+          description?: string
+          file_path?: string
+          id?: string
+          line_number?: number | null
+          severity?: string
+          suggested_fix?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "code_review_comments_ai_review_id_fkey"
+            columns: ["ai_review_id"]
+            isOneToOne: false
+            referencedRelation: "ai_code_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      github_repositories: {
+        Row: {
+          clone_url: string | null
+          created_at: string
+          default_branch: string | null
+          full_name: string
+          github_id: number
+          html_url: string
+          id: string
+          is_private: boolean | null
+          last_sync_at: string | null
+          name: string
+          owner: string
+          ssh_url: string | null
+          updated_at: string
+          user_id: string
+          webhook_id: number | null
+          webhook_secret: string | null
+        }
+        Insert: {
+          clone_url?: string | null
+          created_at?: string
+          default_branch?: string | null
+          full_name: string
+          github_id: number
+          html_url: string
+          id?: string
+          is_private?: boolean | null
+          last_sync_at?: string | null
+          name: string
+          owner: string
+          ssh_url?: string | null
+          updated_at?: string
+          user_id: string
+          webhook_id?: number | null
+          webhook_secret?: string | null
+        }
+        Update: {
+          clone_url?: string | null
+          created_at?: string
+          default_branch?: string | null
+          full_name?: string
+          github_id?: number
+          html_url?: string
+          id?: string
+          is_private?: boolean | null
+          last_sync_at?: string | null
+          name?: string
+          owner?: string
+          ssh_url?: string | null
+          updated_at?: string
+          user_id?: string
+          webhook_id?: number | null
+          webhook_secret?: string | null
         }
         Relationships: []
       }
@@ -241,6 +407,89 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      pull_requests: {
+        Row: {
+          additions: number | null
+          author: string
+          author_avatar_url: string | null
+          base_branch: string
+          body: string | null
+          changed_files: number | null
+          closed_at: string | null
+          created_at: string
+          deletions: number | null
+          diff_url: string | null
+          github_id: number
+          head_branch: string
+          html_url: string
+          id: string
+          mergeable: boolean | null
+          merged_at: string | null
+          number: number
+          patch_url: string | null
+          repository_id: string
+          state: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          additions?: number | null
+          author: string
+          author_avatar_url?: string | null
+          base_branch: string
+          body?: string | null
+          changed_files?: number | null
+          closed_at?: string | null
+          created_at?: string
+          deletions?: number | null
+          diff_url?: string | null
+          github_id: number
+          head_branch: string
+          html_url: string
+          id?: string
+          mergeable?: boolean | null
+          merged_at?: string | null
+          number: number
+          patch_url?: string | null
+          repository_id: string
+          state: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          additions?: number | null
+          author?: string
+          author_avatar_url?: string | null
+          base_branch?: string
+          body?: string | null
+          changed_files?: number | null
+          closed_at?: string | null
+          created_at?: string
+          deletions?: number | null
+          diff_url?: string | null
+          github_id?: number
+          head_branch?: string
+          html_url?: string
+          id?: string
+          mergeable?: boolean | null
+          merged_at?: string | null
+          number?: number
+          patch_url?: string | null
+          repository_id?: string
+          state?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pull_requests_repository_id_fkey"
+            columns: ["repository_id"]
+            isOneToOne: false
+            referencedRelation: "github_repositories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       task_analytics: {
         Row: {
