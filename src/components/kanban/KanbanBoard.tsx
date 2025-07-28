@@ -16,6 +16,7 @@ import {
   closestCorners,
   DragOverEvent,
   UniqueIdentifier,
+  useDroppable,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -130,8 +131,16 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
   onTaskClick,
   onAddTask,
 }) => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: status,
+  });
+
   return (
-    <div className="flex flex-col h-full" data-column={status}>
+    <div 
+      ref={setNodeRef}
+      className={`flex flex-col h-full transition-colors ${isOver ? 'bg-muted/50' : ''}`}
+      data-column={status}
+    >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <div className={`p-2 rounded-lg ${color}`}>
@@ -155,7 +164,7 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
       </div>
 
       <SortableContext items={tasks.map(task => task.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex-1 space-y-3" data-droppable-id={status}>
+        <div className="flex-1 space-y-3 min-h-[400px]" data-droppable-id={status}>
           {tasks.length === 0 ? (
             <div className="text-center p-8 text-muted-foreground">
               <p className="text-sm">No tasks in {label.toLowerCase()}</p>
@@ -228,31 +237,12 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     setActiveTask(task || null);
   };
 
-  const handleDragOver = (event: DragOverEvent) => {
-    const { over } = event;
-    
-    if (!over) return;
-    
-    // Handle dropping over a column or another task
-    const overId = over.id as string;
-    const overElement = document.querySelector(`[data-column="${overId}"]`) || 
-                       document.querySelector(`[data-droppable-id="${overId}"]`);
-    
-    if (overElement) {
-      overElement.classList.add('bg-muted/20');
-    }
-  };
-
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     
-    // Remove highlight from all columns
-    document.querySelectorAll('[data-column]').forEach(el => {
-      el.classList.remove('bg-muted/20');
-    });
+    setActiveTask(null);
     
     if (!over) {
-      setActiveTask(null);
       return;
     }
 
@@ -260,36 +250,30 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     const activeTask = tasks.find(t => t.id === activeTaskId);
     
     if (!activeTask) {
-      setActiveTask(null);
       return;
     }
 
-    // Determine target status
-    let targetStatus: TaskStatus = activeTask.status;
+    // Determine the target status
+    let targetStatus: TaskStatus;
     
-    // Check if dropped on a column directly
-    const columnElement = document.elementFromPoint(event.over?.rect?.left || 0, event.over?.rect?.top || 0);
-    const closestColumn = columnElement?.closest('[data-column]');
-    
-    if (closestColumn) {
-      const columnStatus = closestColumn.getAttribute('data-column') as TaskStatus;
-      if (columnStatus) {
-        targetStatus = columnStatus;
-      }
+    // Check if dropped directly on a column
+    if (over.id === 'todo' || over.id === 'doing' || over.id === 'done') {
+      targetStatus = over.id as TaskStatus;
     } else {
-      // Check if dropped on another task, get its column
+      // Check if dropped on another task
       const overTask = tasks.find(t => t.id === over.id);
       if (overTask) {
         targetStatus = overTask.status;
+      } else {
+        return; // Invalid drop target
       }
     }
     
-    // Update task status if it changed
+    // Only update if status actually changed
     if (activeTask.status !== targetStatus) {
+      console.log(`Moving task ${activeTaskId} from ${activeTask.status} to ${targetStatus}`);
       onTaskStatusChange?.(activeTaskId, targetStatus);
     }
-    
-    setActiveTask(null);
   };
 
   return (
@@ -297,7 +281,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       sensors={sensors}
       collisionDetection={closestCorners}
       onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full">
